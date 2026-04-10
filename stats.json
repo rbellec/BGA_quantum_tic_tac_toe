@@ -1,0 +1,10 @@
+{
+  "table": {
+    "turns_number": {
+      "id": 10,
+      "name": "turns_number",
+      "type": "int"
+    }
+  },
+  "player": {}
+}
