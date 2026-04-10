@@ -53,7 +53,7 @@ class PlayerTurn extends GameState
 
         // --- Insert the new move (symbol derived from move_number parity, not stored) ---
         $this->game->DbQuery(
-            "INSERT INTO moves (move_number, player_id, square1, square2)"
+            "INSERT INTO q_moves (move_number, player_id, square1, square2)"
             . " VALUES ({$moveNum}, {$playerId}, {$sq1}, {$sq2})"
         );
 

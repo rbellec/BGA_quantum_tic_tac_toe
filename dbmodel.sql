@@ -11,12 +11,13 @@ CREATE TABLE IF NOT EXISTS `board` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Each quantum move = one edge in the entanglement graph
-CREATE TABLE IF NOT EXISTS `moves` (
+-- Named q_moves (not moves) to avoid conflict with any BGA internal table
+-- Note: symbol derived from move_number parity (odd=X, even=O). No inline comments below (BGA strips newlines before SQL exec).
+CREATE TABLE IF NOT EXISTS `q_moves` (
   `move_number`  INT(3)  NOT NULL,
   `player_id`    INT(10) NOT NULL,
-  `square1`      INT(2)  NOT NULL,      -- first square (0-8)
-  `square2`      INT(2)  NOT NULL,      -- second square (0-8)
-  `collapsed_to` INT(2)  DEFAULT NULL,  -- NULL = still spooky
+  `square1`      INT(2)  NOT NULL,
+  `square2`      INT(2)  NOT NULL,
+  `collapsed_to` INT(2)  DEFAULT NULL,
   PRIMARY KEY (`move_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
--- Note: symbol ('X' or 'O') is derived from move_number parity (odd=X, even=O)

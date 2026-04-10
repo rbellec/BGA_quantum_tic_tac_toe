@@ -48,7 +48,7 @@ class Game extends \Bga\GameFramework\Table
             ]);
         }
 
-        static::DbQuery(sprintf(
+        $this->DbQuery(sprintf(
             "INSERT INTO `player` (`player_id`, `player_color`, `player_name`) VALUES %s",
             implode(',', $queryValues)
         ));
@@ -77,9 +77,7 @@ class Game extends \Bga\GameFramework\Table
         $board = $this->getCollectionFromDb(
             "SELECT square_id, classical_player_id, classical_move_number, classical_symbol FROM board"
         );
-        $moves = $this->getCollectionFromDb(
-            "SELECT move_number, player_id, symbol, square1, square2, collapsed_to FROM moves"
-        );
+        $moves = $this->getMovesData(); // symbol derived from move_number parity
         $players = $this->getCollectionFromDb(
             "SELECT player_id AS id, player_score AS score, player_color AS color, player_name AS name FROM player"
         );
@@ -112,7 +110,7 @@ class Game extends \Bga\GameFramework\Table
     {
         $graph = array_fill(0, 9, []);
         $rows = $this->getCollectionFromDb(
-            "SELECT square1, square2 FROM moves WHERE collapsed_to IS NULL"
+            "SELECT square1, square2 FROM q_moves WHERE collapsed_to IS NULL"
         );
         foreach ($rows as $row) {
             $s1 = (int)$row['square1'];
@@ -165,7 +163,7 @@ class Game extends \Bga\GameFramework\Table
     {
         // Build edge → move_number map from existing uncollapsed moves
         $rows = $this->getCollectionFromDb(
-            "SELECT move_number, square1, square2 FROM moves WHERE collapsed_to IS NULL"
+            "SELECT move_number, square1, square2 FROM q_moves WHERE collapsed_to IS NULL"
         );
         $edgeToMove = [];
         foreach ($rows as $row) {
@@ -210,9 +208,9 @@ class Game extends \Bga\GameFramework\Table
     public function performCollapse(array $collapses): void
     {
         foreach ($collapses as $moveNum => $square) {
-            $this->DbQuery("UPDATE moves SET collapsed_to={$square} WHERE move_number={$moveNum}");
+            $this->DbQuery("UPDATE q_moves SET collapsed_to={$square} WHERE move_number={$moveNum}");
             $move = $this->getObjectFromDB(
-                "SELECT player_id FROM moves WHERE move_number={$moveNum}"
+                "SELECT player_id FROM q_moves WHERE move_number={$moveNum}"
             );
             $pid = (int)$move['player_id'];
             $sym = $this->symbolFromMoveNumber($moveNum);
@@ -234,7 +232,7 @@ class Game extends \Bga\GameFramework\Table
         while ($changed) {
             $changed = false;
             $uncollapsed = $this->getCollectionFromDb(
-                "SELECT move_number, player_id, square1, square2 FROM moves WHERE collapsed_to IS NULL"
+                "SELECT move_number, player_id, square1, square2 FROM q_moves WHERE collapsed_to IS NULL"
             );
             foreach ($uncollapsed as $row) {
                 $s1 = (int)$row['square1'];
@@ -251,14 +249,14 @@ class Game extends \Bga\GameFramework\Table
                 );
 
                 if ($c1 && !$c2) {
-                    $this->DbQuery("UPDATE moves SET collapsed_to={$s2} WHERE move_number={$mn}");
+                    $this->DbQuery("UPDATE q_moves SET collapsed_to={$s2} WHERE move_number={$mn}");
                     $this->DbQuery(
                         "UPDATE board SET classical_player_id={$pid}, classical_move_number={$mn}, classical_symbol='{$sym}'"
                         . " WHERE square_id={$s2} AND classical_player_id IS NULL"
                     );
                     $changed = true;
                 } elseif ($c2 && !$c1) {
-                    $this->DbQuery("UPDATE moves SET collapsed_to={$s1} WHERE move_number={$mn}");
+                    $this->DbQuery("UPDATE q_moves SET collapsed_to={$s1} WHERE move_number={$mn}");
                     $this->DbQuery(
                         "UPDATE board SET classical_player_id={$pid}, classical_move_number={$mn}, classical_symbol='{$sym}'"
                         . " WHERE square_id={$s1} AND classical_player_id IS NULL"
@@ -352,7 +350,7 @@ class Game extends \Bga\GameFramework\Table
     public function getMovesData(): array
     {
         $rows = $this->getCollectionFromDb(
-            "SELECT move_number, player_id, square1, square2, collapsed_to FROM moves"
+            "SELECT move_number, player_id, square1, square2, collapsed_to FROM q_moves"
         );
         // Compute symbol from move_number parity (odd = X, even = O)
         return array_map(function ($row) {

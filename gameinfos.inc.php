@@ -14,7 +14,7 @@ $gameinfos = [
     'publisher'     => '',
     'publisher_website' => '',
     'publisher_bgg_id'  => 0,
-    'bgg_id'        => 0,
+    'bgg_id'        => 171143,
 
     // 2-player only
     'players'       => [2],
