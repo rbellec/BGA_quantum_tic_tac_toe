@@ -110,7 +110,7 @@ class Game extends \Bga\GameFramework\Table
     {
         $graph = array_fill(0, 9, []);
         $rows = $this->getCollectionFromDb(
-            "SELECT square1, square2 FROM q_moves WHERE collapsed_to IS NULL"
+            "SELECT move_number, square1, square2 FROM q_moves WHERE collapsed_to IS NULL"
         );
         foreach ($rows as $row) {
             $s1 = (int)$row['square1'];
