@@ -1,23 +1,55 @@
 # Quantum Tic Tac Toe — BGA Implementation
 
-Implementation of **Quantum Tic-Tac-Toe** on [Board Game Arena Studio](https://studio.boardgamearena.com), using the new BGA framework (2025+).
-
-> Based on *Quantum Tic-Tac-Toe: A teaching metaphor for superposition in quantum mechanics*  
-> Allan Goff, Novatia Labs — American Journal of Physics, Vol. 74, No. 11, November 2006  
-> https://doi.org/10.1119/1.2213635
-
-BGA game page: https://boardgamegeek.com/boardgame/171143/quantum-tic-tac-toe
+> **Context** — This implementation was produced as a test of [Claude Code](https://claude.ai/claude-code): implementing a board game on BGA Studio entirely with AI assistance, from the published rules to a working first test game, without any manual code writing. The full session (rules → architecture → code → debug → first complete game) is documented step by step in the companion blog article.
 
 ---
 
-## Rules (Allan Goff simplified)
+**Based on:** *Quantum Tic-Tac-Toe: A teaching metaphor for superposition in quantum mechanics*  
+Allan Goff, Novatia Labs — American Journal of Physics, Vol. 74, No. 11, November 2006  
+https://doi.org/10.1119/1.2213635
+
+**BoardGameGeek:** https://boardgamegeek.com/boardgame/171143/quantum-tic-tac-toe
+
+---
+
+## Scope of this implementation
+
+For this test, we implemented a **simplified variant** of Allan Goff's rules, focused on getting a fully playable game running end-to-end as quickly as possible:
+
+- Simultaneous wins resolve by **lowest maximum subscript wins** (no half-point split as in the original paper)
+- No tutorial or player-guidance overlay
+- Minimal UI for collapse choice (text labels only, no board highlighting)
+- 2-player only, no AI opponent
+
+The goal was to validate the complete BGA framework integration — game setup, state machine, quantum move logic, cycle detection, collapse cascade, and victory detection — in a single Claude Code session.
+
+See the [TODO](#todo) section for planned improvements.
+
+---
+
+## Rules (Allan Goff, simplified variant)
 
 1. **Placement** — each turn, the active player places two *spooky marks* (X₁ or O₂, etc.) in two different squares that have no classical mark.
 2. **Entanglement** — each move creates an edge in an entanglement graph (squares = nodes, moves = edges).
 3. **Cycle** — after each move, if a cycle is created in the graph, the *opponent* chooses the collapse direction (2 options).
 4. **Collapse** — the cycle collapses deterministically: each move in the cycle becomes a classical mark on one square. Cascade continues until stable.
-5. **Victory** — first player to have three classical marks in a line (row, column, diagonal). If both players complete a line simultaneously (possible after a collapse), the player whose line has the **lowest maximum subscript** wins (no half-point split).
+5. **Victory** — first player to have three classical marks in a line (row, column, diagonal). If both players complete a line simultaneously (possible after a collapse), the player whose line has the **lowest maximum subscript** wins.
 6. **Draw** — board full with no winner.
+
+---
+
+## License
+
+The game concept and rules of *Quantum Tic-Tac-Toe* are the intellectual property of Allan Goff, published in the American Journal of Physics (2006). The paper is available through the AIP/AJP under standard academic licensing.
+
+Board game rules are generally not copyrightable (in most jurisdictions, including the US), so adapting and implementing the rules is permitted. However, this implementation:
+
+- Credits Allan Goff prominently as the inventor
+- Is non-commercial (BGA Studio, free tier)
+- Makes no claim of ownership over the game concept
+- Links to the original published work
+
+This code (the BGA implementation itself) is released under the **MIT License**.
 
 ---
 
@@ -35,7 +67,7 @@ quantictactoe/
 ├── modules/
 │   ├── php/
 │   │   ├── Game.php                — main class: graph logic, collapse, victory
-│   │   ├── material.inc.php        — static data (empty, included auto by BGA)
+│   │   ├── material.inc.php        — static data (empty, auto-included by BGA)
 │   │   └── States/
 │   │       ├── PlayerTurn.php      — state 20: place 2 spooky marks
 │   │       ├── CollapseChoice.php  — state 30: choose collapse direction
@@ -61,8 +93,6 @@ CREATE TABLE IF NOT EXISTS `board` (
   PRIMARY KEY (`square_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Each quantum move = one edge in the entanglement graph
--- Named q_moves (not moves) to avoid conflict with BGA internal tables
 CREATE TABLE IF NOT EXISTS `q_moves` (
   `move_number`  INT(3)  NOT NULL,
   `player_id`    INT(10) NOT NULL,
@@ -73,10 +103,10 @@ CREATE TABLE IF NOT EXISTS `q_moves` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-**Key design decisions:**
-- Symbol (X or O) is derived from `move_number` parity (odd = X, even = O), not stored.
-- Table named `q_moves` not `moves` — BGA has an internal `moves` table with a different schema.
-- No inline `--` comments inside `CREATE TABLE` — BGA strips newlines before executing SQL, turning inline comments into end-of-line comments that truncate the rest of the statement.
+Key design decisions:
+- Symbol (X or O) derived from `move_number` parity (odd = X, even = O) — not stored
+- Named `q_moves` not `moves` — BGA has an internal `moves` table with a different schema
+- No SQL comments inside `CREATE TABLE` — BGA strips newlines before executing, turning any `--` comment into an end-of-line comment that silently truncates all subsequent columns
 
 ---
 
@@ -94,104 +124,75 @@ CREATE TABLE IF NOT EXISTS `q_moves` (
 Transitions:
 - `PlayerTurn` → `CollapseChoice` (cycle created) or `CheckVictory`
 - `CollapseChoice` → `CheckVictory`
-- `CheckVictory` → `PlayerTurn` (game continues) or `ComputeScores` (win/draw)
+- `CheckVictory` → `PlayerTurn` (continues) or `ComputeScores` (win/draw)
 - `ComputeScores` → 99
 
 ---
 
 ## Entanglement graph and cycle detection
 
-### Graph representation
+### Graph
 
-Each uncollapsed move is an edge. `Game::buildGraph()` builds an adjacency list from `q_moves WHERE collapsed_to IS NULL`.
+Each uncollapsed move is an edge. `buildGraph()` returns an adjacency list from `q_moves WHERE collapsed_to IS NULL`.
 
-```php
-// IMPORTANT: select move_number FIRST so getCollectionFromDb() uses it as key.
-// If two moves share the same square1, selecting square1 first would silently
-// drop one row (getCollectionFromDb uses the first column as array key).
-$rows = $this->getCollectionFromDb(
-    "SELECT move_number, square1, square2 FROM q_moves WHERE collapsed_to IS NULL"
-);
-```
+> **BGA pitfall:** `getCollectionFromDb()` uses the **first selected column** as the PHP array key. Two moves sharing the same `square1` would silently overwrite each other, breaking the graph. Fix: always put `move_number` first so each row has a unique key.
+> ```sql
+> SELECT move_number, square1, square2 FROM q_moves WHERE collapsed_to IS NULL
+> ```
 
 ### Cycle detection
 
-Before inserting a new move (sq1, sq2), check if sq1 and sq2 are already connected in the existing graph via DFS (`Game::findPath`). If a path exists, a cycle would be created.
+Before inserting a new move `(sq1, sq2)`, check if `sq1` and `sq2` are already connected in the graph via DFS. If yes, a cycle would be created → transition to `CollapseChoice`.
 
-### Computing collapse options
+### Collapse options
 
-Given the cycle path `[sq1, p1, ..., pN, sq2]` and the new move number:
+Given cycle path `[sq1, p1, …, pN, sq2]` and the new move number:
+- **Option A** — new move collapses to `sq1`; each edge collapses forward along the path
+- **Option B** — new move collapses to `sq2`; each edge collapses backward
 
-- **Option A** — new move collapses to `sq1`; each subsequent edge collapses to the next node in path.
-- **Option B** — new move collapses to `sq2`; each edge collapses backwards.
+### Cascade
 
-### Cascade collapse
-
-After the initial collapse, any uncollapsed move whose one square just became classical is forced to collapse to the other square. Repeat until stable (`Game::cascadeCollapse`).
-
----
-
-## Bugs encountered and fixed
-
-### 1. Inline SQL comments truncating schema
-
-**Symptom:** `Unknown column 'square1' in 'field list'` — table created with only 2 columns.
-
-**Cause:** BGA strips newlines from `dbmodel.sql` before executing SQL. Inline `-- comment` after a column definition becomes an end-of-line comment that eats all subsequent columns:
-
-```sql
--- WRONG: after newline stripping this becomes one long comment
-CREATE TABLE `q_moves` (
-  `move_number` INT(3) NOT NULL, -- the move number
-  `player_id`   INT(10) NOT NULL, -- truncated here!
-  `square1`     INT(2) NOT NULL,
-  ...
-```
-
-**Fix:** Remove all inline `--` comments from inside `CREATE TABLE`. Only keep block comments before the statement.
-
-### 2. Table name conflict with BGA internals
-
-**Symptom:** Wrong column set when querying `moves`.
-
-**Cause:** BGA has an internal `moves` table with a different schema. `CREATE TABLE IF NOT EXISTS` silently succeeds but the table already exists with wrong columns.
-
-**Fix:** Rename to `q_moves`.
-
-### 3. Cycle detection failing when two moves share square1
-
-**Symptom:** Cycle not detected even when mathematically present (4 moves forming a closed loop).
-
-**Cause:** `getCollectionFromDb("SELECT square1, square2 FROM q_moves ...")` uses `square1` as the array key. Two moves with the same `square1` (e.g., moves 0↔4 and 0↔8) silently overwrite each other, making the graph incomplete.
-
-**Fix:** Add `move_number` as the first selected column so each row has a unique key:
-```sql
-SELECT move_number, square1, square2 FROM q_moves WHERE collapsed_to IS NULL
-```
+After the chosen collapse, any uncollapsed move with one square now classical is forced to collapse to the other square. Repeat until stable.
 
 ---
 
-## BGA framework notes (new 2025+ framework)
+## Bugs found during development
 
-- `getCollectionFromDb()` uses the **first selected column** as the PHP array key — always put a unique column first.
-- No inline `--` comments inside `CREATE TABLE` in `dbmodel.sql`.
-- Never name a custom table `moves`, `player`, `global`, `stats`, or `gamelog` — these conflict with BGA internals.
-- State constructor takes only `id` and `type` — no name, description, or transitions.
-- Act methods return the **next state class** (e.g., `return CollapseChoice::class`).
-- `initGameStateLabels` goes in `initTable()`, not the constructor.
-- Use `$this->bga->globals->set/get()` not `setGameStateValue/getGameStateValue`.
-- Never override `argGameEnd()` or `stGameEnd()` (both are `final`). Use a state 98 to compute scores.
+Three bugs were encountered and fixed during the BGA Studio test session:
+
+### 1. Inline SQL comments truncating the schema
+
+`dbmodel.sql` is executed by BGA with newlines stripped. Inline `--` comments eat all subsequent columns. Fixed by removing all comments from inside `CREATE TABLE`.
+
+### 2. Table name conflict (`moves`)
+
+BGA creates an internal `moves` table. `CREATE TABLE IF NOT EXISTS` silently succeeds on the wrong table. Fixed by renaming to `q_moves`.
+
+### 3. `getCollectionFromDb` dropping duplicate `square1` rows
+
+`SELECT square1, square2 FROM q_moves` used `square1` as array key. Two moves with the same `square1` overwrote each other, making the cycle-detection graph incomplete. Fixed by selecting `move_number` first.
 
 ---
 
 ## Deploy
 
 ```bash
-# PHP lint + deploy via SCP
-make deploy
+make deploy   # PHP lint + SCP to BGA Studio
 ```
 
 Requires `~/.ssh/id_rsa` configured for BGA Studio SFTP (port 2022).
+
+---
+
+## TODO
+
+Planned improvements beyond this alpha / proof-of-concept:
+
+- **Full rules variant** — implement the original half-point scoring for simultaneous wins (winner gets 1 pt, loser gets 0.5 pt), as described in the Goff paper
+- **Better collapse UI** — highlight the cycle path on the board, show which squares each option would fill, let the player preview before confirming
+- **BGA Tutorial** — integrate BGA's built-in tutorial system to guide new players through the quantum mechanics concept step by step
+- **Move animation** — animate the collapse cascade visually (marks appearing one by one) rather than updating the board atomically
+- **Accessibility** — color-blind friendly symbols, keyboard navigation for square selection
 
 ---
 
@@ -200,5 +201,3 @@ Requires `~/.ssh/id_rsa` configured for BGA Studio SFTP (port 2022).
 *Quantum Tic-Tac-Toe* was invented by Allan Goff (Novatia Labs) and published in:
 
 > Goff, A. (2006). Quantum tic-tac-toe: A teaching metaphor for superposition in quantum mechanics. *American Journal of Physics*, 74(11), 962–973. https://doi.org/10.1119/1.2213635
-
-This BGA implementation is a faithful adaptation of the published rules, made for educational and non-commercial purposes with full attribution to the original author.
