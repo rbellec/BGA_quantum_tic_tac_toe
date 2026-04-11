@@ -1,6 +1,6 @@
 # Quantum Tic Tac Toe — BGA Implementation
 
-> **Context** — This implementation was produced as a test of [Claude Code](https://claude.ai/claude-code): implementing a board game on BGA Studio entirely with AI assistance, from the published rules to a working first test game, without any manual code writing. The full session (rules → architecture → code → debug → first complete game) is documented step by step in the companion blog article.
+> **Context** — This implementation was produced as a test of [Claude Code](https://claude.ai/claude-code): implementing a board game on BGA Studio entirely with AI assistance, from the published rules to a working first test game, without any manual code writing. The method, skill file, and workflow used for this experiment are documented in [claude-code-bga](https://github.com/rbellec/claude-code-bga).
 
 ---
 
