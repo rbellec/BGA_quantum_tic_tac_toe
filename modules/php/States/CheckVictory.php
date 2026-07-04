@@ -25,8 +25,17 @@ class CheckVictory extends GameState
         $result = $this->game->checkVictory();
 
         if ($result === null) {
-            // Game continues — active player is already set
-            return PlayerTurn::class;
+            $free = (int)$this->game->getUniqueValueFromDB(
+                "SELECT COUNT(*) FROM board WHERE classical_player_id IS NULL"
+            );
+            if ($free > 1) {
+                // Game continues — active player is already set
+                return PlayerTurn::class;
+            }
+            // Goff rule: with a single free square left, the last move is forced —
+            // one classical mark placed there. The board is then full: win or draw.
+            $this->game->placeForcedLastMark();
+            $result = $this->game->checkVictory();
         }
 
         if ($result === 'draw') {

@@ -177,8 +177,8 @@ export class Game {
         const spookyBySq = {}; // sq_id => [{symbol, move_number, partner}]
         for (const move of Object.values(moves)) {
             if (move.collapsed_to !== null) continue; // already classical
-            const s1 = parseInt(move.square1);
-            const s2 = parseInt(move.square2);
+            const s1 = parseInt(move.square1, 10);
+            const s2 = parseInt(move.square2, 10);
             const entry1 = { symbol: move.symbol, move_number: move.move_number, partner: s2 };
             const entry2 = { symbol: move.symbol, move_number: move.move_number, partner: s1 };
             if (!spookyBySq[s1]) spookyBySq[s1] = [];
@@ -246,6 +246,12 @@ export class Game {
     }
 
     async notif_boardCollapsed(args) {
+        this.gamedatas.board = args.board;
+        this.gamedatas.moves = args.moves;
+        this.renderBoard(args.board, args.moves);
+    }
+
+    async notif_lastMarkPlaced(args) {
         this.gamedatas.board = args.board;
         this.gamedatas.moves = args.moves;
         this.renderBoard(args.board, args.moves);

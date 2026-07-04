@@ -23,11 +23,6 @@ class Game extends \Bga\GameFramework\Table
         [0, 4, 8], [2, 4, 6],             // diags
     ];
 
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
     // =========================================================
     // BGA framework entry points
     // =========================================================
@@ -37,7 +32,6 @@ class Game extends \Bga\GameFramework\Table
         // Insert players with fixed colors: first = red (X), second = blue (O)
         $colors = ['ff0000', '0000ff'];
         $queryValues = [];
-        $playerIds = array_keys($players);
 
         foreach ($players as $pid => $player) {
             $color = array_shift($colors);
@@ -62,8 +56,7 @@ class Game extends \Bga\GameFramework\Table
         // Initialize globals
         $this->bga->globals->set('move_number', 0);
         $this->bga->globals->set('collapse_options', null);
-        // Track which player is X (the one who places odd-numbered moves)
-        $this->bga->globals->set('x_player_id', (int)$playerIds[0]);
+        $this->bga->globals->set('collapse_cycle_path', null);
 
         // Stats
         $this->bga->tableStats->init('turns_number', 0);
@@ -83,10 +76,9 @@ class Game extends \Bga\GameFramework\Table
         );
 
         return [
-            'board'       => $board,
-            'moves'       => $moves,
-            'players'     => $players,
-            'x_player_id' => (int)$this->bga->globals->get('x_player_id'),
+            'board'   => $board,
+            'moves'   => $moves,
+            'players' => $players,
         ];
     }
 
@@ -195,16 +187,16 @@ class Game extends \Bga\GameFramework\Table
         return ['A' => $optionA, 'B' => $optionB];
     }
 
-    /**
-     * Execute collapse and cascade.
-     * @param array $collapses  [move_number => square_to_collapse_to, ...]
-     */
     /** Compute symbol from move number parity: odd = X, even = O */
     public function symbolFromMoveNumber(int $moveNum): string
     {
         return ($moveNum % 2 === 1) ? 'X' : 'O';
     }
 
+    /**
+     * Execute collapse and cascade.
+     * @param array $collapses  [move_number => square_to_collapse_to, ...]
+     */
     public function performCollapse(array $collapses): void
     {
         foreach ($collapses as $moveNum => $square) {
@@ -265,6 +257,40 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
         }
+    }
+
+    /**
+     * Goff rule: when a single free square remains, the next move is forced —
+     * a single classical mark placed on that square by the active player.
+     * Called from CheckVictory (GAME state), where the active player is the one to move.
+     */
+    public function placeForcedLastMark(): void
+    {
+        $square = (int)$this->getUniqueValueFromDB(
+            "SELECT square_id FROM board WHERE classical_player_id IS NULL"
+        );
+        $moveNum  = $this->incrementAndGetMoveNumber();
+        $playerId = (int)$this->getActivePlayerId();
+        $sym      = $this->symbolFromMoveNumber($moveNum);
+
+        $this->DbQuery(
+            "INSERT INTO q_moves (move_number, player_id, square1, square2, collapsed_to)"
+            . " VALUES ({$moveNum}, {$playerId}, {$square}, {$square}, {$square})"
+        );
+        $this->DbQuery(
+            "UPDATE board SET classical_player_id={$playerId}, classical_move_number={$moveNum}, classical_symbol='{$sym}'"
+            . " WHERE square_id={$square}"
+        );
+
+        $this->bga->notify->all('lastMarkPlaced', clienttranslate('${player_name} places the final mark ${symbol}${move_num} on the last free square'), [
+            'player_id'   => $playerId,
+            'player_name' => $this->getPlayerNameById($playerId),
+            'symbol'      => $sym,
+            'move_num'    => $moveNum,
+            'square'      => $square,
+            'board'       => $this->getBoardData(),
+            'moves'       => $this->getMovesData(),
+        ]);
     }
 
     // =========================================================
