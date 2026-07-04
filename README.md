@@ -18,7 +18,6 @@ For this test, we implemented a **simplified variant** of Allan Goff's rules, fo
 
 - Simultaneous wins resolve by **lowest maximum subscript wins** (no half-point split as in the original paper)
 - No tutorial or player-guidance overlay
-- Minimal UI for collapse choice (text labels only, no board highlighting)
 - 2-player only, no AI opponent
 
 The goal was to validate the complete BGA framework integration — game setup, state machine, quantum move logic, cycle detection, collapse cascade, and victory detection — in a single Claude Code session.
@@ -79,6 +78,16 @@ quantictactoe/
 ```
 
 The board itself is a pure CSS grid built by the client — no image assets.
+
+### UI
+
+Dark "quantum" theme:
+
+- Night-blue board panel, neon glowing marks (X red / O cyan, matching BGA player colors); spooky marks render as small glowing pills with a subtle superposition shimmer
+- **Entanglement links** — each uncollapsed move is drawn as a dashed, glowing SVG curve between its two squares; hovering a spooky mark highlights its link and partner mark
+- **Collapse preview** — hovering a collapse button ("Collapse A/B") overlays ghost classical marks on the squares that option would fill; cycle squares get a soft amber ring while the choice is pending
+- **Collapse cascade animation** — the server sends the ordered collapse sequence and the client freezes one mark every 450 ms (disabled under `prefers-reduced-motion` or when BGA animations are off)
+- Cell size is responsive (`clamp()`), so the board fits BGA's 500 px minimum interface width
 
 ---
 
@@ -201,10 +210,9 @@ Requires `~/.ssh/id_rsa` configured for BGA Studio SFTP (port 2022).
 Planned improvements beyond this alpha / proof-of-concept:
 
 - **Full rules variant** — implement the original half-point scoring for simultaneous wins (winner gets 1 pt, loser gets 0.5 pt), as described in the Goff paper
-- **Better collapse UI** — highlight the cycle path on the board, show which squares each option would fill, let the player preview before confirming
 - **BGA Tutorial** — integrate BGA's built-in tutorial system to guide new players through the quantum mechanics concept step by step
-- **Move animation** — animate the collapse cascade visually (marks appearing one by one) rather than updating the board atomically
-- **Accessibility** — color-blind friendly symbols, keyboard navigation for square selection
+- **Accessibility** — keyboard navigation for square selection (symbols are already distinguishable by shape, not only color)
+- **Touch collapse preview** — the collapse preview relies on hover; offer a tap-to-preview / confirm flow for touch devices
 
 ---
 

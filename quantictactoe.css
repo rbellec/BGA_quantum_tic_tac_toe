@@ -58,6 +58,8 @@
 
 .qttt-square.qttt-available {
     cursor: pointer;
+    background: linear-gradient(160deg, #1d2846, #182240);
+    box-shadow: inset 0 0 0 1px #34426e;
 }
 
 .qttt-square.qttt-available:hover {
