@@ -42,21 +42,22 @@ class CollapseChoice extends GameState
     }
 
     #[PossibleAction]
-    public function actChooseCollapse(string $direction): string
+    public function actChooseCollapse(string $direction, int $activePlayerId): string
     {
         if (!in_array($direction, ['A', 'B'])) {
-            throw new UserException("Invalid collapse direction.");
+            throw new UserException(clienttranslate("Invalid collapse direction."));
         }
 
         $options  = $this->game->bga->globals->get('collapse_options');
         $collapses = $options[$direction];
-        $playerId = $this->game->getCurrentPlayerId();
+        $playerId = $activePlayerId;
 
         // Execute collapse
         $this->game->performCollapse($collapses);
 
         // Clear stored options
         $this->game->bga->globals->set('collapse_options', null);
+        $this->game->bga->globals->set('collapse_cycle_path', null);
 
         // Notify board update
         $this->game->bga->notify->all('boardCollapsed', clienttranslate('${player_name} collapses the entanglement (direction ${direction})'), [
@@ -72,6 +73,6 @@ class CollapseChoice extends GameState
 
     function zombie(int $playerId): string
     {
-        return $this->actChooseCollapse('A');
+        return $this->actChooseCollapse('A', $playerId);
     }
 }

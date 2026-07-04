@@ -27,24 +27,23 @@ class PlayerTurn extends GameState
     }
 
     #[PossibleAction]
-    public function actPlaceSpookyMarks(int $sq1, int $sq2): string
+    public function actPlaceSpookyMarks(int $sq1, int $sq2, int $activePlayerId, array $args): string
     {
         // --- Validation ---
         if ($sq1 === $sq2) {
-            throw new UserException("You must choose two different squares.");
+            throw new UserException(clienttranslate("You must choose two different squares."));
         }
         if ($sq1 < 0 || $sq1 > 8 || $sq2 < 0 || $sq2 > 8) {
-            throw new UserException("Invalid square index.");
+            throw new UserException(clienttranslate("Invalid square index."));
         }
 
         // Both squares must be free of classical marks
-        $args = $this->getArgs();
         $available = $args['available_squares'];
         if (!in_array($sq1, $available) || !in_array($sq2, $available)) {
-            throw new UserException("One or both squares already have a classical mark.");
+            throw new UserException(clienttranslate("One or both squares already have a classical mark."));
         }
 
-        $playerId  = $this->game->getCurrentPlayerId();
+        $playerId  = $activePlayerId;
         $moveNum   = $this->game->incrementAndGetMoveNumber();
         $symbol    = $this->game->symbolFromMoveNumber($moveNum);
 
@@ -72,36 +71,24 @@ class PlayerTurn extends GameState
         // Stats
         $this->game->bga->tableStats->inc('turns_number', 1);
 
-        // --- Activate the opponent (always: either for CollapseChoice or next PlayerTurn) ---
-        $this->game->activeNextPlayer();
-
         if ($cyclePath !== null) {
-            // Cycle detected: opponent must choose collapse direction
+            // Cycle detected: store the options; NextTurn activates the opponent,
+            // who must choose the collapse direction
             $options = $this->game->computeCollapseOptions($cyclePath, $moveNum);
             $this->game->bga->globals->set('collapse_options', $options);
-
-            $this->game->bga->notify->all('cycleDetected', clienttranslate('A cyclic entanglement was created! ${player_name} must choose how to collapse it.'), [
-                'player_name' => $this->game->getActivePlayerName(),
-                'cycle_path'  => $cyclePath,
-                'options'     => $options,
-            ]);
-
-            return CollapseChoice::class;
+            $this->game->bga->globals->set('collapse_cycle_path', $cyclePath);
         }
 
-        return CheckVictory::class;
+        return NextTurn::class;
     }
 
     function zombie(int $playerId): string
     {
+        // CheckVictory guarantees at least 2 free squares before entering this state
         $args = $this->getArgs();
         $available = $args['available_squares'];
-        if (count($available) < 2) {
-            // No valid move — just skip to next state
-            $this->game->activeNextPlayer();
-            return CheckVictory::class;
-        }
-        shuffle($available);
-        return $this->actPlaceSpookyMarks($available[0], $available[1]);
+        $sq1 = array_splice($available, bga_rand(0, count($available) - 1), 1)[0];
+        $sq2 = $available[bga_rand(0, count($available) - 1)];
+        return $this->actPlaceSpookyMarks($sq1, $sq2, $playerId, $args);
     }
 }
