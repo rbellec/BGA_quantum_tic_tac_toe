@@ -153,9 +153,14 @@ class Game extends \Bga\GameFramework\Table
      */
     public function computeCollapseOptions(array $path, int $newMoveNum): array
     {
-        // Build edge → move_number map from existing uncollapsed moves
+        // Build edge → move_number map from existing uncollapsed moves, excluding the
+        // new move itself: by the time this runs it is already in the DB, and when the
+        // cycle is a direct 2-square repeat (path length 2), its edge is identical to
+        // the pre-existing edge it closes — including it here would overwrite that
+        // move's entry in $edgeToMove and lose its collapse mapping.
         $rows = $this->getCollectionFromDb(
-            "SELECT move_number, square1, square2 FROM q_moves WHERE collapsed_to IS NULL"
+            "SELECT move_number, square1, square2 FROM q_moves"
+            . " WHERE collapsed_to IS NULL AND move_number != {$newMoveNum}"
         );
         $edgeToMove = [];
         foreach ($rows as $row) {
