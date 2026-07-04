@@ -121,6 +121,22 @@ export class Game {
         // Render initial state
         this.renderBoard(gamedatas.board, gamedatas.moves);
 
+        // Hovering a spooky mark highlights its entanglement link + partner mark
+        const board = document.getElementById('qttt-board');
+        board.addEventListener('mouseover', (e) => {
+            const mark = e.target.closest('.qttt-mark-spooky');
+            if (mark) this._setLinkHighlight(mark.dataset.move, true);
+        });
+        board.addEventListener('mouseout', (e) => {
+            const mark = e.target.closest('.qttt-mark-spooky');
+            if (mark) this._setLinkHighlight(mark.dataset.move, false);
+        });
+
+        // Link positions depend on rendered cell size
+        window.addEventListener('resize', () => {
+            if (this.gamedatas) this._drawEntanglementLinks(this.gamedatas.moves);
+        });
+
         this.setupNotifications();
         console.log('Quantum Tic Tac Toe — setup complete');
     }
@@ -137,6 +153,7 @@ export class Game {
                 <div id="qttt-board">
                     ${cells}
                 </div>
+                <svg id="qttt-links" aria-hidden="true"></svg>
             </div>
             <div id="qttt-attribution">
                 Based on <em>Quantum Tic-Tac-Toe</em> by Allan Goff
@@ -197,9 +214,75 @@ export class Game {
             el.classList.add('qttt-spooky');
             const marksHtml = marks
                 .sort((a, b) => a.move_number - b.move_number)
-                .map(m => `<span class="qttt-mark-spooky qttt-${m.symbol.toLowerCase()}">${m.symbol}<sub>${m.move_number}</sub></span>`)
+                .map(m => `<span class="qttt-mark-spooky qttt-${m.symbol.toLowerCase()}" data-move="${m.move_number}">${m.symbol}<sub>${m.move_number}</sub></span>`)
                 .join('');
             el.innerHTML = `<div class="qttt-spooky-marks">${marksHtml}</div>`;
+        }
+
+        this._drawEntanglementLinks(moves);
+    }
+
+    // ── Entanglement links ────────────────────────────────────────────────────
+
+    /**
+     * Draw one curved SVG link per uncollapsed move, connecting its two squares.
+     * Parallel links between the same pair of squares fan out with distinct bows.
+     */
+    _drawEntanglementLinks(moves) {
+        const svg  = document.getElementById('qttt-links');
+        const wrap = document.getElementById('qttt-board-wrap');
+        if (!svg || !wrap) return;
+
+        const wrapRect = wrap.getBoundingClientRect();
+        svg.setAttribute('viewBox', `0 0 ${wrapRect.width} ${wrapRect.height}`);
+        svg.innerHTML = '';
+
+        const center = (sq) => {
+            const r = document.getElementById(`qttt-square-${sq}`).getBoundingClientRect();
+            return {
+                x: r.left - wrapRect.left + r.width / 2,
+                y: r.top  - wrapRect.top  + r.height / 2,
+            };
+        };
+
+        // Group uncollapsed moves by square pair so parallel links get distinct bows
+        const groups = {};
+        for (const move of Object.values(moves)) {
+            if (move.collapsed_to !== null) continue;
+            const s1 = parseInt(move.square1, 10);
+            const s2 = parseInt(move.square2, 10);
+            const key = `${Math.min(s1, s2)}_${Math.max(s1, s2)}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push({ move_number: move.move_number, symbol: move.symbol, s1, s2 });
+        }
+
+        for (const group of Object.values(groups)) {
+            group.forEach((move, i) => {
+                const a = center(move.s1);
+                const b = center(move.s2);
+                // Bow each link perpendicular to the segment; siblings fan out
+                const dx = b.x - a.x, dy = b.y - a.y;
+                const len = Math.hypot(dx, dy) || 1;
+                const nx = -dy / len, ny = dx / len;
+                const bow = 16 + (i - (group.length - 1) / 2) * 26;
+                const cx = (a.x + b.x) / 2 + nx * bow;
+                const cy = (a.y + b.y) / 2 + ny * bow;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`);
+                path.classList.add('qttt-link', `qttt-link-${move.symbol.toLowerCase()}`);
+                path.dataset.move = move.move_number;
+                svg.appendChild(path);
+            });
+        }
+    }
+
+    _setLinkHighlight(moveNum, on) {
+        const method = on ? 'add' : 'remove';
+        const path = document.querySelector(`#qttt-links path[data-move="${moveNum}"]`);
+        if (path) path.classList[method]('qttt-link-hot');
+        for (const mark of document.querySelectorAll(`.qttt-mark-spooky[data-move="${moveNum}"]`)) {
+            mark.classList[method]('qttt-mark-hot');
         }
     }
 

@@ -167,11 +167,51 @@
     text-shadow: 0 0 6px var(--qttt-o-glow);
 }
 
+/* ── Entanglement links ────────────────────────────────── */
+
+#qttt-links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.qttt-link {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 5 5;
+    opacity: 0.45;
+    transition: opacity 0.15s, stroke-width 0.15s;
+    animation: qttt-dash 2.4s linear infinite;
+}
+
+@keyframes qttt-dash {
+    to { stroke-dashoffset: -20; }
+}
+
+.qttt-link-x { stroke: var(--qttt-x); filter: drop-shadow(0 0 3px var(--qttt-x-glow)); }
+.qttt-link-o { stroke: var(--qttt-o); filter: drop-shadow(0 0 3px var(--qttt-o-glow)); }
+
+.qttt-link.qttt-link-hot {
+    opacity: 1;
+    stroke-width: 3;
+}
+
+.qttt-mark-spooky.qttt-mark-hot {
+    opacity: 1;
+    animation: none;
+}
+.qttt-mark-spooky.qttt-mark-hot.qttt-x { box-shadow: inset 0 0 0 1px var(--qttt-x), 0 0 8px var(--qttt-x-glow); }
+.qttt-mark-spooky.qttt-mark-hot.qttt-o { box-shadow: inset 0 0 0 1px var(--qttt-o), 0 0 8px var(--qttt-o-glow); }
+
 /* ── Reduced motion ────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
     .qttt-mark-spooky,
-    .qttt-square.qttt-cycle {
+    .qttt-square.qttt-cycle,
+    .qttt-link {
         animation: none;
     }
 }
