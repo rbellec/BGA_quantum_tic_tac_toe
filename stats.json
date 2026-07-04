@@ -2,7 +2,7 @@
   "table": {
     "turns_number": {
       "id": 10,
-      "name": "turns_number",
+      "name": "Number of turns",
       "type": "int"
     }
   },

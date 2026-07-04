@@ -6,7 +6,7 @@ BGA_REMOTE := $(BGA_GAME)
 BGA_SCP    := scp -i ~/.ssh/id_rsa -P $(BGA_PORT) -o IdentitiesOnly=yes
 
 DEPLOY_ROOT := gameinfos.inc.php dbmodel.sql stats.json gameoptions.json gamepreferences.json
-DEPLOY_PHP  := modules/php/Game.php $(wildcard modules/php/States/*.php)
+DEPLOY_PHP  := modules/php/Game.php
 DEPLOY_JS   := modules/js/Game.js
 
 check:
