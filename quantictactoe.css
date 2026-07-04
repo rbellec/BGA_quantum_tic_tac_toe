@@ -1,70 +1,120 @@
-/* Quantum Tic Tac Toe — BGA stylesheet */
+/* Quantum Tic Tac Toe — BGA stylesheet
+   Dark "quantum" theme: night-blue board, neon marks (X red / O cyan,
+   matching BGA player colors), glow feedback. */
 
-/* ── Board ─────────────────────────────────────────────── */
+/* ── Design tokens ─────────────────────────────────────── */
+
+#qttt-board-wrap {
+    --qttt-cell:      clamp(80px, 24vw, 126px);
+    --qttt-gap:       5px;
+    --qttt-bg-panel:  #0b1020;
+    --qttt-bg-cell:   #141c31;
+    --qttt-bg-cell-2: #18213a;
+    --qttt-line:      #263252;
+    --qttt-x:         #ff5f6d;
+    --qttt-x-glow:    rgba(255, 95, 109, 0.55);
+    --qttt-o:         #4fc3f7;
+    --qttt-o-glow:    rgba(79, 195, 247, 0.55);
+    --qttt-select:    #64ffda;
+    --qttt-cycle:     #ffb74d;
+}
+
+/* ── Board panel ───────────────────────────────────────── */
+
+#qttt-board-wrap {
+    position: relative;
+    width: fit-content;
+    margin: 20px auto 8px;
+    padding: calc(var(--qttt-gap) * 2);
+    border-radius: 12px;
+    background:
+        radial-gradient(120% 120% at 20% 0%, #101832 0%, var(--qttt-bg-panel) 60%),
+        var(--qttt-bg-panel);
+    box-shadow:
+        0 6px 24px rgba(5, 10, 30, 0.45),
+        inset 0 0 0 1px var(--qttt-line);
+}
 
 #qttt-board {
     display: grid;
-    grid-template-columns: repeat(3, 120px);
-    grid-template-rows:    repeat(3, 120px);
-    gap: 4px;
-    background: #333;
-    border: 4px solid #333;
-    border-radius: 6px;
-    margin: 20px auto;
-    width: fit-content;
+    grid-template-columns: repeat(3, var(--qttt-cell));
+    grid-template-rows:    repeat(3, var(--qttt-cell));
+    gap: var(--qttt-gap);
 }
 
 /* ── Squares ───────────────────────────────────────────── */
 
 .qttt-square {
-    background: #f5f0e8;
+    background: linear-gradient(160deg, var(--qttt-bg-cell-2), var(--qttt-bg-cell));
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
-    border-radius: 2px;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px var(--qttt-line);
     cursor: default;
-    transition: background 0.15s;
-    min-height: 120px;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .qttt-square.qttt-available {
     cursor: pointer;
-    background: #fffde7;
 }
 
 .qttt-square.qttt-available:hover {
-    background: #fff9c4;
+    background: linear-gradient(160deg, #1e2947, #1a2440);
+    box-shadow:
+        inset 0 0 0 1px rgba(100, 255, 218, 0.45),
+        0 0 10px rgba(100, 255, 218, 0.18);
 }
 
 .qttt-square.qttt-selected {
-    background: #e3f2fd;
-    outline: 3px solid #1976d2;
+    background: linear-gradient(160deg, #16324a, #12283e);
+    box-shadow:
+        inset 0 0 0 2px var(--qttt-select),
+        0 0 14px rgba(100, 255, 218, 0.35);
 }
 
 .qttt-square.qttt-cycle {
-    background: #fff3e0;
-    outline: 3px solid #f57c00;
+    box-shadow:
+        inset 0 0 0 2px var(--qttt-cycle),
+        0 0 14px rgba(255, 183, 77, 0.45);
+    animation: qttt-cycle-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes qttt-cycle-pulse {
+    from { box-shadow: inset 0 0 0 2px var(--qttt-cycle), 0 0 8px  rgba(255, 183, 77, 0.30); }
+    to   { box-shadow: inset 0 0 0 2px var(--qttt-cycle), 0 0 18px rgba(255, 183, 77, 0.60); }
 }
 
 /* ── Classical marks ───────────────────────────────────── */
 
 .qttt-mark-classical {
-    font-size: 52px;
-    font-weight: 900;
-    font-family: 'Georgia', serif;
+    font-size: calc(var(--qttt-cell) * 0.46);
+    font-weight: 700;
+    font-family: Georgia, 'Times New Roman', serif;
     line-height: 1;
     user-select: none;
 }
 
 .qttt-mark-classical sub {
-    font-size: 16px;
+    font-size: 0.34em;
     font-weight: 600;
     vertical-align: sub;
+    opacity: 0.85;
 }
 
-.qttt-square.qttt-x .qttt-mark-classical { color: #c62828; }
-.qttt-square.qttt-o .qttt-mark-classical { color: #1565c0; }
+.qttt-square.qttt-x .qttt-mark-classical {
+    color: var(--qttt-x);
+    text-shadow: 0 0 10px var(--qttt-x-glow), 0 0 26px var(--qttt-x-glow);
+}
+.qttt-square.qttt-o .qttt-mark-classical {
+    color: var(--qttt-o);
+    text-shadow: 0 0 10px var(--qttt-o-glow), 0 0 26px var(--qttt-o-glow);
+}
+
+/* Subtle frame tint once a square is classical */
+.qttt-square.qttt-classical.qttt-x { box-shadow: inset 0 0 0 1px rgba(255, 95, 109, 0.35); }
+.qttt-square.qttt-classical.qttt-o { box-shadow: inset 0 0 0 1px rgba(79, 195, 247, 0.35); }
 
 /* ── Spooky marks ──────────────────────────────────────── */
 
@@ -73,26 +123,58 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 4px;
+    gap: calc(var(--qttt-cell) * 0.03);
+    padding: calc(var(--qttt-cell) * 0.05);
     width: 100%;
 }
 
 .qttt-mark-spooky {
-    font-size: 18px;
+    font-size: calc(var(--qttt-cell) * 0.17);
     font-weight: 600;
-    font-family: 'Georgia', serif;
-    opacity: 0.75;
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height: 1.1;
+    padding: 0.08em 0.3em;
+    border-radius: 0.5em;
     user-select: none;
+    opacity: 0.85;
+    animation: qttt-superpose 2.6s ease-in-out infinite alternate;
+}
+
+/* Stagger the shimmer so marks don't pulse in sync */
+.qttt-mark-spooky:nth-child(2n)  { animation-delay: -0.9s; }
+.qttt-mark-spooky:nth-child(3n)  { animation-delay: -1.7s; }
+
+@keyframes qttt-superpose {
+    from { opacity: 0.62; }
+    to   { opacity: 0.95; }
 }
 
 .qttt-mark-spooky sub {
-    font-size: 9px;
+    font-size: 0.55em;
     vertical-align: sub;
 }
 
-.qttt-mark-spooky.qttt-x { color: #c62828; }
-.qttt-mark-spooky.qttt-o { color: #1565c0; }
+.qttt-mark-spooky.qttt-x {
+    color: var(--qttt-x);
+    background: rgba(255, 95, 109, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(255, 95, 109, 0.25);
+    text-shadow: 0 0 6px var(--qttt-x-glow);
+}
+.qttt-mark-spooky.qttt-o {
+    color: var(--qttt-o);
+    background: rgba(79, 195, 247, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(79, 195, 247, 0.25);
+    text-shadow: 0 0 6px var(--qttt-o-glow);
+}
+
+/* ── Reduced motion ────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .qttt-mark-spooky,
+    .qttt-square.qttt-cycle {
+        animation: none;
+    }
+}
 
 /* ── Attribution ───────────────────────────────────────── */
 

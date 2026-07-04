@@ -133,8 +133,10 @@ export class Game {
             cells += `<div class="qttt-square" id="qttt-square-${i}" data-sq="${i}"></div>`;
         }
         return `
-            <div id="qttt-board">
-                ${cells}
+            <div id="qttt-board-wrap">
+                <div id="qttt-board">
+                    ${cells}
+                </div>
             </div>
             <div id="qttt-attribution">
                 Based on <em>Quantum Tic-Tac-Toe</em> by Allan Goff
