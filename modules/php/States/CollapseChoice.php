@@ -53,7 +53,7 @@ class CollapseChoice extends GameState
         $playerId = $activePlayerId;
 
         // Execute collapse
-        $this->game->performCollapse($collapses);
+        $sequence = $this->game->performCollapse($collapses);
 
         // Clear stored options
         $this->game->bga->globals->set('collapse_options', null);
@@ -64,6 +64,7 @@ class CollapseChoice extends GameState
             'player_name' => $this->game->getPlayerNameById($playerId),
             'direction'   => $direction,
             'collapses'   => $collapses,
+            'collapse_sequence' => $sequence,
             'board'       => $this->game->getBoardData(),
             'moves'       => $this->game->getMovesData(),
         ]);

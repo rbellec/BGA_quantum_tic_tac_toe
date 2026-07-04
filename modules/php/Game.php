@@ -201,9 +201,12 @@ class Game extends \Bga\GameFramework\Table
     /**
      * Execute collapse and cascade.
      * @param array $collapses  [move_number => square_to_collapse_to, ...]
+     * @return array Ordered collapse sequence [['move' => n, 'square' => s], ...]
+     *               (chosen-option collapses first, then cascade), for client animation.
      */
-    public function performCollapse(array $collapses): void
+    public function performCollapse(array $collapses): array
     {
+        $sequence = [];
         foreach ($collapses as $moveNum => $square) {
             $this->DbQuery("UPDATE q_moves SET collapsed_to={$square} WHERE move_number={$moveNum}");
             $move = $this->getObjectFromDB(
@@ -215,16 +218,19 @@ class Game extends \Bga\GameFramework\Table
                 "UPDATE board SET classical_player_id={$pid}, classical_move_number={$moveNum}, classical_symbol='{$sym}'"
                 . " WHERE square_id={$square} AND classical_player_id IS NULL"
             );
+            $sequence[] = ['move' => (int)$moveNum, 'square' => (int)$square];
         }
-        $this->cascadeCollapse();
+        return array_merge($sequence, $this->cascadeCollapse());
     }
 
     /**
      * Cascade: any uncollapsed move whose one square is now classical must collapse to the other.
      * Repeat until stable.
+     * @return array Ordered collapse sequence, same shape as performCollapse().
      */
-    private function cascadeCollapse(): void
+    private function cascadeCollapse(): array
     {
+        $sequence = [];
         $changed = true;
         while ($changed) {
             $changed = false;
@@ -251,6 +257,7 @@ class Game extends \Bga\GameFramework\Table
                         "UPDATE board SET classical_player_id={$pid}, classical_move_number={$mn}, classical_symbol='{$sym}'"
                         . " WHERE square_id={$s2} AND classical_player_id IS NULL"
                     );
+                    $sequence[] = ['move' => $mn, 'square' => $s2];
                     $changed = true;
                 } elseif ($c2 && !$c1) {
                     $this->DbQuery("UPDATE q_moves SET collapsed_to={$s1} WHERE move_number={$mn}");
@@ -258,10 +265,12 @@ class Game extends \Bga\GameFramework\Table
                         "UPDATE board SET classical_player_id={$pid}, classical_move_number={$mn}, classical_symbol='{$sym}'"
                         . " WHERE square_id={$s1} AND classical_player_id IS NULL"
                     );
+                    $sequence[] = ['move' => $mn, 'square' => $s1];
                     $changed = true;
                 }
             }
         }
+        return $sequence;
     }
 
     /**

@@ -377,8 +377,48 @@ export class Game {
     }
 
     async notif_boardCollapsed(args) {
+        const oldBoard = this.gamedatas.board;
+        const oldMoves = this.gamedatas.moves;
         this.gamedatas.board = args.board;
         this.gamedatas.moves = args.moves;
+
+        const sequence = args.collapse_sequence || [];
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const animActive = this.bga.gameui?.bgaAnimationsActive
+            ? this.bga.gameui.bgaAnimationsActive()
+            : true;
+
+        if (!sequence.length || reducedMotion || !animActive) {
+            this.renderBoard(args.board, args.moves);
+            return;
+        }
+
+        // Replay the collapse from the pre-collapse snapshot, freezing one move
+        // per step so the cascade is readable.
+        const board = JSON.parse(JSON.stringify(oldBoard));
+        const moves = JSON.parse(JSON.stringify(oldMoves));
+        const boardBySq = {};
+        for (const sq of Object.values(board)) {
+            boardBySq[parseInt(sq.square_id, 10)] = sq;
+        }
+
+        for (const step of sequence) {
+            const move = Object.values(moves).find(m => parseInt(m.move_number, 10) === step.move);
+            if (move) move.collapsed_to = step.square;
+            const sq = boardBySq[step.square];
+            if (sq && sq.classical_player_id === null) {
+                sq.classical_player_id   = move ? move.player_id : '0';
+                sq.classical_move_number = String(step.move);
+                sq.classical_symbol      = (step.move % 2 === 1) ? 'X' : 'O';
+            }
+            this.renderBoard(board, moves);
+            document.getElementById(`qttt-square-${step.square}`)
+                ?.querySelector('.qttt-mark-classical')
+                ?.classList.add('qttt-materialize');
+            await new Promise(r => setTimeout(r, 450));
+        }
+
+        // Final authoritative render
         this.renderBoard(args.board, args.moves);
     }
 
