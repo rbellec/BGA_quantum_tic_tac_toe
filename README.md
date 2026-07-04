@@ -34,7 +34,8 @@ See the [TODO](#todo) section for planned improvements.
 3. **Cycle** — after each move, if a cycle is created in the graph, the *opponent* chooses the collapse direction (2 options).
 4. **Collapse** — the cycle collapses deterministically: each move in the cycle becomes a classical mark on one square. Cascade continues until stable.
 5. **Victory** — first player to have three classical marks in a line (row, column, diagonal). If both players complete a line simultaneously (possible after a collapse), the player whose line has the **lowest maximum subscript** wins.
-6. **Draw** — board full with no winner.
+6. **Last move** — when a single square remains without a classical mark, the last move is forced: a single classical mark is placed there automatically for the player whose turn it is (a spooky move needs two free squares).
+7. **Draw** — board full with no winner.
 
 ---
 
@@ -64,20 +65,20 @@ quantictactoe/
 ├── gameoptions.json                — game options
 ├── gamepreferences.json            — player preferences
 ├── quantictactoe.css               — board and marks styles
-├── modules/
-│   ├── php/
-│   │   ├── Game.php                — main class: graph logic, collapse, victory
-│   │   ├── material.inc.php        — static data (empty, auto-included by BGA)
-│   │   └── States/
-│   │       ├── PlayerTurn.php      — state 20: place 2 spooky marks
-│   │       ├── CollapseChoice.php  — state 30: choose collapse direction
-│   │       ├── CheckVictory.php    — state 40: auto check win/draw
-│   │       └── ComputeScores.php   — state 98: record scores before gameEnd
-│   └── js/
-│       └── Game.js                 — ES6 client: board render + actions
-└── img/
-    └── board.svg                   — 3×3 grid SVG
+└── modules/
+    ├── php/
+    │   ├── Game.php                — main class: graph logic, collapse, victory
+    │   └── States/
+    │       ├── PlayerTurn.php      — state 20: place 2 spooky marks
+    │       ├── NextTurn.php        — state 25: auto activate opponent, route
+    │       ├── CollapseChoice.php  — state 30: choose collapse direction
+    │       ├── CheckVictory.php    — state 40: auto check win/draw
+    │       └── ComputeScores.php   — state 98: record scores before gameEnd
+    └── js/
+        └── Game.js                 — ES6 client: board render + actions
 ```
+
+The board itself is a pure CSS grid built by the client — no image assets.
 
 ---
 
@@ -116,15 +117,17 @@ Key design decisions:
 |----|-------|------|------|
 | 1 | — | — | gameSetup (reserved) |
 | 20 | `PlayerTurn` | ACTIVE_PLAYER | Place 2 spooky marks |
+| 25 | `NextTurn` | GAME | Activate opponent (active player can only change in a GAME state) |
 | 30 | `CollapseChoice` | ACTIVE_PLAYER | Choose collapse direction |
-| 40 | `CheckVictory` | GAME | Auto check win/draw |
+| 40 | `CheckVictory` | GAME | Auto check win/draw + forced last move |
 | 98 | `ComputeScores` | GAME | Record scores before gameEnd |
 | 99 | — | — | gameEnd (reserved) |
 
 Transitions:
-- `PlayerTurn` → `CollapseChoice` (cycle created) or `CheckVictory`
+- `PlayerTurn` → `NextTurn`
+- `NextTurn` → `CollapseChoice` (cycle created) or `CheckVictory`
 - `CollapseChoice` → `CheckVictory`
-- `CheckVictory` → `PlayerTurn` (continues) or `ComputeScores` (win/draw)
+- `CheckVictory` → `PlayerTurn` (continues), or `ComputeScores` (win/draw), placing the forced last mark first when a single free square remains
 - `ComputeScores` → 99
 
 ---
@@ -171,6 +174,15 @@ BGA creates an internal `moves` table. `CREATE TABLE IF NOT EXISTS` silently suc
 ### 3. `getCollectionFromDb` dropping duplicate `square1` rows
 
 `SELECT square1, square2 FROM q_moves` used `square1` as array key. Two moves with the same `square1` overwrote each other, making the cycle-detection graph incomplete. Fixed by selecting `move_number` first.
+
+### Post-session code review fixes
+
+A later review pass (against the BGA framework reference and skill checklist) fixed four latent issues that never surfaced during the test session:
+
+1. **Zombie crash** — act methods used `getCurrentPlayerId()`, which fails when the framework runs zombie turns server-side (no current player). Act methods now take the framework-injected `$activePlayerId` magic parameter, and zombie methods pass their `$playerId` explicitly.
+2. **`activeNextPlayer()` in an ACTIVE_PLAYER state** — the framework documentation forbids changing the active player outside GAME states. Added the `NextTurn` GAME state (id 25) to do it.
+3. **Stuck table on the 9th move** — a spooky move needs two free squares; with 8 classical marks and one free square the active player had no legal action. `CheckVictory` now places the forced final classical mark automatically (Goff's last-move rule).
+4. **Makefile deploy** — `States/*.php` files were also uploaded flat into `modules/php/` on the server, leaving stray duplicate class files.
 
 ---
 
