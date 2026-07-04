@@ -86,6 +86,53 @@
     to   { box-shadow: inset 0 0 0 2px var(--qttt-cycle), 0 0 18px rgba(255, 183, 77, 0.60); }
 }
 
+/* Soft ring on cycle squares while a collapse choice is pending */
+.qttt-square.qttt-cycle-soft {
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 183, 77, 0.55),
+        0 0 8px rgba(255, 183, 77, 0.25);
+}
+
+/* ── Collapse preview (ghost marks) ────────────────────── */
+
+.qttt-ghost {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(11, 16, 32, 0.85);
+    font-size: calc(var(--qttt-cell) * 0.46);
+    font-weight: 700;
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.qttt-ghost sub {
+    font-size: 0.34em;
+    font-weight: 600;
+    vertical-align: sub;
+}
+
+.qttt-ghost.qttt-x {
+    color: var(--qttt-x);
+    box-shadow: inset 0 0 0 2px var(--qttt-x-glow);
+    text-shadow: 0 0 12px var(--qttt-x-glow);
+}
+.qttt-ghost.qttt-o {
+    color: var(--qttt-o);
+    box-shadow: inset 0 0 0 2px var(--qttt-o-glow);
+    text-shadow: 0 0 12px var(--qttt-o-glow);
+}
+
+#qttt-board-wrap.qttt-preview-active .qttt-link {
+    opacity: 0.1;
+}
+
 /* ── Classical marks ───────────────────────────────────── */
 
 .qttt-mark-classical {

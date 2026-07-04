@@ -75,22 +75,42 @@ class CollapseChoice {
                 : _('${actplayer} is choosing the collapse direction')
         );
 
+        const options = args.options || {};
+
+        // Soft-highlight the cycle squares for everyone while the choice is pending
+        // (the union of both options' target squares is exactly the cycle)
+        const cycleSquares = new Set([
+            ...Object.values(options.A || {}),
+            ...Object.values(options.B || {}),
+        ]);
+        for (const sq of cycleSquares) {
+            document.getElementById(`qttt-square-${sq}`)?.classList.add('qttt-cycle-soft');
+        }
+
         if (isCurrentPlayerActive) {
             const labels = args.labels || {};
-            this.bga.statusBar.addActionButton(
-                _('Direction A') + (labels.A ? ` (${labels.A})` : ''),
-                () => this.bga.actions.performAction('actChooseCollapse', { direction: 'A' }),
-                { color: 'blue' }
-            );
-            this.bga.statusBar.addActionButton(
-                _('Direction B') + (labels.B ? ` (${labels.B})` : ''),
-                () => this.bga.actions.performAction('actChooseCollapse', { direction: 'B' }),
-                { color: 'red' }
-            );
+            for (const dir of ['A', 'B']) {
+                this.bga.statusBar.addActionButton(
+                    dir === 'A' ? _('Collapse A') : _('Collapse B'),
+                    () => this.bga.actions.performAction('actChooseCollapse', { direction: dir }),
+                    { color: dir === 'A' ? 'primary' : 'secondary', id: `qttt-btn-collapse-${dir}` }
+                );
+                const btn = document.getElementById(`qttt-btn-collapse-${dir}`);
+                if (btn && options[dir]) {
+                    if (labels[dir]) btn.title = labels[dir];
+                    btn.addEventListener('mouseenter', () => this.game.showCollapsePreview(options[dir]));
+                    btn.addEventListener('mouseleave', () => this.game.clearCollapsePreview());
+                }
+            }
         }
     }
 
-    onLeavingState(args, isCurrentPlayerActive) {}
+    onLeavingState(args, isCurrentPlayerActive) {
+        this.game.clearCollapsePreview();
+        for (const el of document.querySelectorAll('.qttt-cycle-soft')) {
+            el.classList.remove('qttt-cycle-soft');
+        }
+    }
 }
 
 // ─── Main Game class ──────────────────────────────────────────────────────────
@@ -275,6 +295,32 @@ export class Game {
                 svg.appendChild(path);
             });
         }
+    }
+
+    // ── Collapse preview ──────────────────────────────────────────────────────
+
+    /**
+     * Show ghost classical marks for one collapse option: each entry of
+     * `collapses` ({move_number: target_square}) becomes a translucent mark
+     * overlaid on its target square, dimming the entanglement links.
+     */
+    showCollapsePreview(collapses) {
+        this.clearCollapsePreview();
+        for (const [moveNum, sq] of Object.entries(collapses)) {
+            const el = document.getElementById(`qttt-square-${sq}`);
+            if (!el) continue;
+            const sym = (parseInt(moveNum, 10) % 2 === 1) ? 'X' : 'O';
+            const ghost = document.createElement('div');
+            ghost.className = `qttt-ghost qttt-${sym.toLowerCase()}`;
+            ghost.innerHTML = `${sym}<sub>${moveNum}</sub>`;
+            el.appendChild(ghost);
+        }
+        document.getElementById('qttt-board-wrap')?.classList.add('qttt-preview-active');
+    }
+
+    clearCollapsePreview() {
+        for (const ghost of document.querySelectorAll('.qttt-ghost')) ghost.remove();
+        document.getElementById('qttt-board-wrap')?.classList.remove('qttt-preview-active');
     }
 
     _setLinkHighlight(moveNum, on) {
