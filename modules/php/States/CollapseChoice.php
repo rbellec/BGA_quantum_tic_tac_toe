@@ -21,11 +21,18 @@ class CollapseChoice extends GameState
         parent::__construct($game, id: 30, type: StateType::ACTIVE_PLAYER);
     }
 
+    private const SQUARE_NAMES = [
+        'top-left', 'top-center', 'top-right',
+        'middle-left', 'center', 'middle-right',
+        'bottom-left', 'bottom-center', 'bottom-right',
+    ];
+
     public function getArgs(): array
     {
         $options = $this->game->bga->globals->get('collapse_options');
         // Build human-readable labels for each option
         $labels = [];
+        $shortLabels = [];
         foreach ($options as $dir => $collapses) {
             $parts = [];
             foreach ($collapses as $moveNum => $square) {
@@ -34,10 +41,17 @@ class CollapseChoice extends GameState
                 $parts[] = "move {$moveNum} → ({$row},{$col})";
             }
             $labels[$dir] = implode(', ', $parts);
+
+            // The new (cycle-closing) move is the highest move number in this
+            // option — its destination is the most actionable single fact for
+            // telling the two options apart at a glance.
+            $newMoveNum = max(array_keys($collapses));
+            $shortLabels[$dir] = self::SQUARE_NAMES[$collapses[$newMoveNum]];
         }
         return [
-            'options' => $options,
-            'labels'  => $labels,
+            'options'      => $options,
+            'labels'       => $labels,
+            'short_labels' => $shortLabels,
         ];
     }
 

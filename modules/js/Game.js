@@ -89,9 +89,14 @@ class CollapseChoice {
 
         if (isCurrentPlayerActive) {
             const labels = args.labels || {};
+            const shortLabels = args.short_labels || {};
             for (const dir of ['A', 'B']) {
+                const dest = shortLabels[dir];
+                const buttonLabel = dest
+                    ? _('Collapse — new mark to ${square}').replace('${square}', dest)
+                    : (dir === 'A' ? _('Collapse A') : _('Collapse B'));
                 this.bga.statusBar.addActionButton(
-                    dir === 'A' ? _('Collapse A') : _('Collapse B'),
+                    buttonLabel,
                     () => this.bga.actions.performAction('actChooseCollapse', { direction: dir }),
                     { color: dir === 'A' ? 'primary' : 'secondary', id: `qttt-btn-collapse-${dir}` }
                 );

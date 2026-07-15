@@ -85,7 +85,7 @@ Dark "quantum" theme:
 
 - Night-blue board panel, neon glowing marks (X red / O cyan, matching BGA player colors); spooky marks render as small glowing pills with a subtle superposition shimmer
 - **Entanglement links** — each uncollapsed move is drawn as a dashed, glowing SVG curve between its two squares; hovering a spooky mark highlights its link and partner mark
-- **Collapse preview** — hovering a collapse button ("Collapse A/B") overlays ghost classical marks on the squares that option would fill; cycle squares get a soft amber ring while the choice is pending
+- **Collapse preview** — each collapse button is labeled with where the new mark would land (e.g. "Collapse — new mark to top-left"); hovering it also overlays ghost classical marks on every square that option would fill, and cycle squares get a soft amber ring while the choice is pending
 - **Collapse cascade animation** — the server sends the ordered collapse sequence and the client freezes one mark every 450 ms (disabled under `prefers-reduced-motion` or when BGA animations are off)
 - Cell size is responsive (`clamp()`), so the board fits BGA's 500 px minimum interface width
 
