@@ -62,7 +62,7 @@
     box-shadow: inset 0 0 0 1px #34426e;
 }
 
-.qttt-square.qttt-available:hover {
+.qttt-square.qttt-available:hover:not(.qttt-selected) {
     background: linear-gradient(160deg, #1e2947, #1a2440);
     box-shadow:
         inset 0 0 0 1px rgba(100, 255, 218, 0.45),
